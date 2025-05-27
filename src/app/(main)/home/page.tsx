@@ -6,17 +6,19 @@ import Streaks from '@/components/home/streaks';
 import { Clock } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useCallback, useEffect, useState } from 'react';
 import { hasCompletedOnboarding, setOnboardingCompleted } from '@/lib/cookies';
 import { useUserStore } from '@/store/user.store';
 import Recents from '@/components/home/recents';
 import RecommendedProducts from '@/components/home/recommended-products';
+import { useChatStore } from '@/store/chat.store';
 
 const HomePage = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const searchParams = useSearchParams();
   const skipOnboarding = searchParams.get('skipOnboarding') === 'true';
+  const {sendMessage} = useChatStore()
 
   useEffect(() => {
     // Only check for first visit if not explicitly skipping
@@ -24,8 +26,12 @@ const HomePage = () => {
       setShowOnboarding(true);
     }
   }, [skipOnboarding]);
-  const { theme } = useTheme();
-  const { user } = useUserStore()
+  const route = useRouter();
+  const handleSend = async (message: string) => {
+    route.push('/chat')
+    if (!message.trim()) return
+    await sendMessage(message)
+  }
   return (
     <div className='w-full flex flex-col items-center bg-[#FAFAFA] dark:bg-[#262626]'>
       <Image src='/assets/logo.png' alt='' width={103} height={90} className='mx-auto mb-[55px]' />
@@ -35,7 +41,7 @@ const HomePage = () => {
         <h1 className='text-[30px]/[120%] font-bold satoshi'>What are you curious about today, segun? </h1>
       </div>
       <div className='flex flex-col items-start '>
-        <ChatInputForm />
+        <ChatInputForm onSend={handleSend} />
         <Recents />
         <RecommendedProducts />
         <div className='flex items-center justify-between w-full mt-[50px] mb-[30px]'>

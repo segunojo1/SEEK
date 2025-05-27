@@ -33,7 +33,6 @@ const toFile = (attachment: FileAttachmentType): File => {
 };
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PDFViewer } from './pdf-viewer';
 
 const FileAttachmentPreview = ({ file }: { file: FileAttachmentType | File }) => {
   const [showPdfViewer, setShowPdfViewer] = useState(false);
@@ -94,14 +93,6 @@ const FileAttachmentPreview = ({ file }: { file: FileAttachmentType | File }) =>
     };
   }, [file]);
 
-  const handleOpenInCanvas = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // Always use the same objectUrl that was created in the effect
-    if (objectUrl) {
-      setShowPdfViewer(true);
-    }
-  };
   
   const handleOpenInNewTab = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -145,24 +136,10 @@ const FileAttachmentPreview = ({ file }: { file: FileAttachmentType | File }) =>
             >
               Open
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-gray-700 dark:text-gray-300"
-              onClick={handleOpenInCanvas}
-            >
-              View in Canvas
-            </Button>
           </div>
         </div>
       </div>
       
-      {showPdfViewer && (
-        <PDFViewer 
-          file={file} 
-          onClose={() => setShowPdfViewer(false)} 
-        />
-      )}
     </>
   );
 };
@@ -175,7 +152,7 @@ export function ChatMessageList({
   isLoading: boolean 
 }) {
   return (
-    <div className="flex flex-col space-y-4 p-4 overflow-y-auto h-[calc(100vh-200px)]">
+    <div className="flex flex-col space-y-4 p-4 overflow-y-auto max-h-[calc(100vh-200px)]">
       {messages.length > 0 && (
         <div className="h-[140px]"></div>
       )}
@@ -203,16 +180,18 @@ export function ChatMessageList({
             
             {/* Message content */}
             {message.content && (
-              <div 
-                className={`rounded-[69px] p-4 ${
-                  message.role === 'user' 
-                    ? 'bg-[#F0F0EF] text-black' 
-                    : 'bg-transparent'
-                }`}
-              >
-                <p>{message.content}</p>
-              </div>
-            )}
+  <div 
+    className={`rounded-[69px] p-4 max-w-full ${
+      message.role === 'user' 
+        ? 'bg-[#404040] text-[#D4D4D4]' 
+        : 'bg-transparent'
+    }`}
+  >
+    <p className="break-words overflow-wrap-break-word max-w-full whitespace-pre-wrap">
+      {message.content}
+    </p>
+  </div>
+)}
           </div>
         </div>
       ))}

@@ -1,31 +1,19 @@
 'use client'
 
-import Image from 'next/image'
 
 interface SuggestedQuestionProp {
-    type: string
     text: string
     onClick: () => void
 }
 
-export const SuggestedQuestion = ({ type, text, onClick }: SuggestedQuestionProp) => {
-    const icons = {
-        physics: '/assets/orange.png',
-        math: '/assets/blue.png',
-        anatomy: '/assets/green.png'
-    }
-
+export const SuggestedQuestion = ({ text, onClick }: SuggestedQuestionProp) => {
+  
     return (
         <button 
           onClick={onClick}
-          className='w-[192px] flex flex-col items-center gap-[5px] px-5 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors'
+          className='w-[232px] max-h-[140px] h-full flex flex-col gap-2 items-center justify-between px-5 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors'
         >
-            <Image 
-              src={icons[type as keyof typeof icons] || '/assets/orange.png'} 
-              alt='' 
-              width={30} 
-              height={30} 
-            />
+            <div className='w-[30px] h-[30px] bg-[#FEFAEE] rounded-full'></div>
             <p className='text-center text-[15px] font-normal'>{text}</p>
         </button>
     )

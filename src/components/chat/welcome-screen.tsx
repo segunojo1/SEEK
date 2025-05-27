@@ -3,40 +3,32 @@
 import { useUserStore } from '@/store/user.store';
 import UserAvatar from '../user-avatar'
 import { SuggestedQuestion } from './suggested-question'
+import Image from 'next/image';
 
 export function WelcomeScreen({ onSend }: { onSend: (message: string) => void }) {
 
       const { user } = useUserStore();
   
   const suggestedQuestions = [
-    {
-      text: "Explain Quantum Mechanics like I'm five.",
-      type: "physics"
-    },
-    {
-      text: "Graph the derivative of f(x) = 3x² + 2x.",
-      type: "math"
-    },
-    {
-      text: "Test me with a quiz on Human Anatomy!",
-      type: "anatomy"
-    }
+    "What does niacinamide do for my skin?",
+    "How much protein is in a boiled egg?",
+    "Can I take paracetamol on an empty stomach?"
   ]
 
   return (
-    <div className="flex flex-col items-center flex-grow">
-      <div className="flex items-center gap-5 mb-[71px]">
-        <UserAvatar />
-        <h1 className='text-[30px]/[120%] font-bold satoshi'>Good Evening, {user?.name?.split(' ')[0]}</h1>
-      </div>
+    <div className="flex flex-col items-center flex-grow satoshi">
+      <div className='flex items-center gap-5 mb-[51px]'>
+                  <Image src='/assets/user-dark.svg' alt='' width={45} height={45} className='' />
+                
+              <h1 className='text-[30px]/[120%] font-bold satoshi'>What are you curious about today, segun? </h1>
+            </div>
 
       <div className='flex items-center gap-5'>
         {suggestedQuestions.map((question, index) => (
           <SuggestedQuestion
             key={index} 
-            type={question.type} 
-            text={question.text}
-            onClick={() => onSend(question.text)}
+            text={question}
+            onClick={() => onSend(question)}
           />
         ))}
       </div>

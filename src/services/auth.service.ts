@@ -1,47 +1,74 @@
 import { useUserStore } from '@/store/user.store';
+import useAuthStore from '@/store/auth.store';
 import axios, { AxiosInstance } from 'axios';
 import Cookies from 'js-cookie';
 import { toast } from 'sonner';
 
-interface RegisterPayload {
-  fullName: string;
+export interface RegisterPayload {
+  firstName: string;
+  lastName: string;
   email: string;
-  nickName: string;
   password: string;
   confirmPassword: string;
 }
 
 export interface User {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  nickname: string;
-  role?: string;
-  school?: string;
-  department?: string;
-  interests?: string;
-  study_vibe?: string[];
-  image_url?: string;
-  dateCreated: string | null;
+  isEmailVerified: boolean;
+  dateCreated: string;
+  dateModified: string | null;
+}
+
+export interface Profile {
+  id: string;
+  userId: string;
+  dateOfBirth: string;
+  gender: string;
+  height: number;
+  weight: number;
+  skinType: string;
+  nationality: string;
+  dietType: string;
+  allergies: string[];
+  userGoals: string[];
+  dateCreated: string;
   dateModified: string | null;
 }
 
 export interface SignupPayload {
-  name: string;
-  email: string;
-  nickname: string;
-  password: string;
-  role: string;
-  school: string;
-  department: string;
-  interests: string[];
-  study_vibe: string[];
-  user_image?: File | string;
+  FirstName: string;
+  LastName: string;
+  Email: string;
+  Password: string;
+  ConfirmPassword: string;
+}
+
+export interface ProfilePayload {
+  dateOfBirth: string;
+  gender: string;
+  height: number;
+  weight: number;
+  skinType: string;
+  nationality: string;
+  dietType: string;
+  allergies: string[];
+  userGoals: string[];
 }
 
 export interface OtpResponse {
   message: string;
   success: boolean;
+  userId?: string;
+  token?: string;
+  user?: User;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  code: string;
 }
 
 class AuthService {
@@ -61,6 +88,77 @@ class AuthService {
         'Content-Type': 'application/json',
       },
     });
+
+    // Add request interceptor to add auth token to requests
+    this.api.interceptors.request.use(
+      (config) => {
+        // Skip adding token for signup and login endpoints
+        const isAuthEndpoint = [
+          '/api/auth/register',
+          '/api/auth/login',
+          '/api/auth/send-otp',
+          '/api/VerificationCode/VerifyCode/'
+        ].some(endpoint => config.url?.includes(endpoint));
+
+        if (!isAuthEndpoint) {
+          const token = Cookies.get('token');
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          } else {
+            // Handle case where token is missing but required
+            console.warn('No authentication token found');
+          }
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Add response interceptor to handle token expiration
+    this.api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        
+        // If error is 401 and we haven't tried to refresh the token yet
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          
+          try {
+            // Try to refresh the token
+            const refreshToken = Cookies.get('refreshToken');
+            if (refreshToken) {
+              const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/refresh-token`, {
+                refreshToken
+              });
+              
+              const { token, refreshToken: newRefreshToken } = response.data;
+              
+              // Update tokens
+              Cookies.set('token', token, this.COOKIE_OPTIONS);
+              Cookies.set('refreshToken', newRefreshToken, this.COOKIE_OPTIONS);
+              
+              // Update the Authorization header
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              
+              // Retry the original request
+              return this.api(originalRequest);
+            }
+          } catch (error) {
+            // If refresh token fails, clear auth and redirect to login
+            Cookies.remove('token');
+            Cookies.remove('refreshToken');
+            useUserStore.getState().setUser(null);
+            window.location.href = '/login';
+            return Promise.reject(error);
+          }
+        }
+        
+        return Promise.reject(error);
+      }
+    );
   }
 
   public static getInstance(): AuthService {
@@ -108,18 +206,39 @@ class AuthService {
 
   public async sendOtp(email: string, name: string): Promise<OtpResponse> {
     try {
-      const response = await this.api.post<OtpResponse>('/otp', { email, name });
+      const response = await this.api.post<OtpResponse>('/api/auth/send-otp', { email, name });
       return response.data;
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to send OTP';
-      console.error('OTP send failed:', errorMessage);
+      console.error('Error sending OTP:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to send OTP. Please try again.';
       throw new Error(errorMessage);
     }
   }
 
-  public async verifyOtp(email: string, otp: string): Promise<OtpResponse> {
+  public async verifyOtp(otp: string): Promise<OtpResponse> {
     try {
-      const response = await this.api.post<OtpResponse>('/verifyOTP', { email, otp });
+      // First, get the user ID from the store or context
+      const userId = useAuthStore.getState().signupData.userId;
+      if (!userId) {
+        throw new Error('User ID not found. Please try the signup process again.');
+      }
+
+      const response = await this.api.get<OtpResponse>(
+        `/api/VerificationCode/VerifyCode/${otp}/${userId}`
+      );
+      
+      if (response.data.token) {
+        // Store the token and update the auth header
+        Cookies.set('token', response.data.token, this.COOKIE_OPTIONS);
+        this.api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        
+        // If user data is included in the response, store it as well
+        if (response.data.user) {
+          Cookies.set('user', JSON.stringify(response.data.user), this.COOKIE_OPTIONS);
+          useUserStore.getState().setUser(response.data.user);
+        }
+      }
+      
       return response.data;
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'OTP verification failed';
@@ -128,42 +247,72 @@ class AuthService {
     }
   }
 
-  public async register(data: SignupPayload): Promise<{ user: User; token: string }> {
+  public async register(payload: SignupPayload & { [key: string]: any }): Promise<{
+    $id: string;
+    value: {
+      $id: string;
+      id: number;
+      FullName: string;
+      Email: string;
+      roleId: number;
+      roleName: string;
+    };
+    message: string;
+  }> {
     try {
       const formData = new FormData();
       
-      // Append all fields to formData
-      Object.entries(data).forEach(([key, value]) => {
-        if (key === 'user_image' && value instanceof File) {
-          formData.append('user_image', value);
-        } else if (Array.isArray(value)) {
-          // Handle array fields (interests, study_vibe)
-          value.forEach(item => formData.append(key, item));
-        } else if (value !== undefined && value !== null) {
-          formData.append(key, String(value));
+      // Append all fields to FormData
+      Object.entries(payload).forEach(([key, value]) => {
+        // Handle file uploads
+        if (value instanceof File) {
+          formData.append(key, value);
+        } 
+        // Handle array fields (like allergies, userGoals, etc.)
+        else if (Array.isArray(value)) {
+          value.forEach((item, index) => {
+            formData.append(`${key}[${index}]`, item);
+          });
+        }
+        // Handle other primitive values
+        else if (value !== undefined && value !== null) {
+          formData.append(key, value);
         }
       });
 
-      const response = await this.api.post<{ user: User; token: string }>('/signup', formData, {
+      const response = await this.api.post<{
+        $id: string;
+        value: {
+          $id: string;
+          id: number;
+          fullName: string;
+          email: string;
+          roleId: number;
+          roleName: string;
+        };
+        message: string;
+      }>('/api/auth/register', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-
-      // Set auth token and user data in cookies
-      if (response.data.token) {
-        Cookies.set('token', response.data.token, this.COOKIE_OPTIONS);
-        Cookies.set('user', JSON.stringify(response.data.user), this.COOKIE_OPTIONS);
-        this.api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      }
-
       return response.data;
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Registration failed';
-      toast(errorMessage);
-      throw new Error(errorMessage);
+      console.error('Registration failed:', error);
+      throw new Error(error.response?.data?.message || 'Registration failed. Please try again.');
     }
   }
+
+  public async createProfile(userId: string, profileData: ProfilePayload): Promise<Profile> {
+    try {
+      const response = await this.api.post<Profile>(`/api/Profile/create?userId=${userId}`, profileData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Profile creation failed:', error);
+      throw new Error(error.response?.data?.message || 'Profile creation failed. Please try again.');
+    }
+  }
+
   public async login(email: string, password: string): Promise<{ user: User; token: string}> {
     try {
       const response = await this.api.post<{ user: User; token: string }>('/login', { email, password });

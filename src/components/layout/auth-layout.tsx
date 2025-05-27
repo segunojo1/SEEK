@@ -24,12 +24,12 @@ export default function AuthClientLayout({
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className='flex flex-col w-full min-h-screen'>
+    <div className='flex flex-col w-full min-h-screen satoshi'>
       {/* Fixed Top Bar */}
       <div className='fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-8 py-2'>
 
         <div className='flex items-center'>
-          <img src='/assets/orange.png' alt='Logo' className='h-8 w-8 ' />
+          <img src='/assets/meal-icon.svg' alt='Logo' className='h-8 w-8 ' />
           <div className='w-[1px] h-[25px] bg-[#A3A3A3] mx-3' />
           <div className='flex items-center space-x-2'>
             <Globe className='h-5 w-5' color='#A3A3A3' />

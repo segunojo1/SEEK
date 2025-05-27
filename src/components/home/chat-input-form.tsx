@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "../ui/button"
 import { Textarea } from "../ui/textarea"
-import { Loader2, Paperclip, X, FileText, SendHorizontal } from "lucide-react"
+import { Loader2, Paperclip, X, FileText, SendHorizontal, Camera, Mic, MicOff, Waves } from "lucide-react"
 import { useChatStore } from "@/store/chat.store"
 import { toast } from "sonner"
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
@@ -16,6 +16,15 @@ import { AudioWaveform } from "lucide-react"
 import Image from "next/image"
 import { ArrowUp, Loader } from "lucide-react"
 import { FormMessage } from "../ui/form"
+import { useRouter } from "next/navigation"
+
+// Speech recognition types
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+    SpeechRecognition: any;
+  }
+}
 
 const ChatInputForm = ({ 
   onSend, 
@@ -24,10 +33,105 @@ const ChatInputForm = ({
   onSend: (message: string, file?: File) => void, 
   disabled?: boolean 
 }) => {
+  // Check if the browser supports the Web Speech API
+  const isSpeechSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string>('')
-  const [mode, setMode] = useState<'ask' | 'research' | 'create'>('ask')
+  const [mode, setMode] = useState<'ask' | 'search' | 'scan'>('ask')
+  const [isListening, setIsListening] = useState<boolean>(false)
+  const [volume, setVolume] = useState<number>(0)
+  const [interimTranscript, setInterimTranscript] = useState<string>('')
+  const recognitionRef = useRef<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const toggleListening = () => {
+    if (isListening) {
+      // Stop listening
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+        setInterimTranscript('')
+      }
+      setIsListening(false)
+    } else {
+      // Start listening
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      if (!SpeechRecognition) {
+        toast.error('Speech recognition is not supported in your browser')
+        return
+      }
+
+      const recognition = new SpeechRecognition()
+      recognition.continuous = true
+      recognition.interimResults = true
+      
+      // Add event listener for volume/sound detection
+      if ('webkitAudioContext' in window) {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+          .then((stream) => {
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+            
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            const updateVolume = () => {
+              if (!isListening) return;
+              analyser.getByteFrequencyData(dataArray);
+              const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+              setVolume(Math.min(100, average * 0.5)); // Scale and cap the volume
+              requestAnimationFrame(updateVolume);
+            };
+            updateVolume();
+          })
+          .catch((error) => {
+            console.error('Error accessing microphone:', error);
+          });
+      }
+
+      recognition.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          form.setValue('chat', form.getValues('chat') + finalTranscript, { shouldValidate: true });
+        }
+        setInterimTranscript(interimTranscript);
+      }
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error)
+        toast.error('Error occurred in speech recognition')
+        setIsListening(false)
+        setInterimTranscript('')
+      }
+
+      recognition.onend = () => {
+        setIsListening(false)
+      }
+
+      try {
+        recognition.start()
+        setIsListening(true)
+        recognitionRef.current = recognition
+      } catch (error) {
+        console.error('Speech recognition start failed:', error)
+        toast.error('Failed to start speech recognition')
+      }
+    }
+  }
+  const router = useRouter()
 
   const form = useForm<z.infer<typeof chatSchema>>({
     resolver: zodResolver(chatSchema),
@@ -39,16 +143,29 @@ const ChatInputForm = ({
   const { isLoading } = useChatStore()
 
   const handleSubmit = async (values: z.infer<typeof chatSchema>) => {
-    if (!values.chat.trim() && !selectedFile) return
+    const message = values.chat.trim()
     
+    if (!message && !selectedFile) return
+
     try {
-      onSend(values.chat, selectedFile || undefined)
+      if (mode === 'search' && message) {
+        // For search mode, navigate to /meals/{query}
+        router.push(`/meals/${encodeURIComponent(message)}`)
+        return
+      } else if (mode === 'scan' && selectedFile) {
+        // For scan mode, handle the image file
+        onSend('', selectedFile)
+      } else {
+        // For ask mode or when there's no file in scan mode
+        onSend(message, selectedFile || undefined)
+      }
+      
       form.reset()
       setSelectedFile(null)
       setPreviewUrl('')
     } catch (error) {
-      console.error('Error sending message:', error)
-      toast.error('Failed to send message')
+      console.error('Error:', error)
+      toast.error(`Failed to ${mode === 'search' ? 'search' : 'send message'}`)
     }
   }
 
@@ -60,16 +177,24 @@ const ChatInputForm = ({
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Check if file is PDF
-    if (file.type !== 'application/pdf') {
-      toast.error('Only PDF files are supported')
+    // For scan mode, only allow images
+    if (mode === 'scan' && !file.type.startsWith('image/')) {
+      toast.error('Please upload an image file')
+      return
+    }
+    // For other modes, only allow PDFs
+    else if (mode !== 'scan' && file.type !== 'application/pdf') {
+      toast.error('Only PDF files are supported for this mode')
       return
     }
 
     setSelectedFile(file)
-    console.log(selectedFile);
-    
     setPreviewUrl(URL.createObjectURL(file))
+    
+    // If in scan mode and no message, auto-submit
+    if (mode === 'scan' && !form.getValues('chat')?.trim()) {
+      form.handleSubmit(handleSubmit)()
+    }
   }
 
   const removeFile = () => {
@@ -141,17 +266,23 @@ const ChatInputForm = ({
                       placeholder={
                         mode === 'ask'
                           ? "Ask anything… or type @ to see Clark's magic commands..."
-                          : mode === 'research'
-                            ? "Research a topic..."
-                            : "Create something new..."
+                          : mode === 'search'
+                            ? "Search for meals..."
+                            : "Take or upload a photo of food..."
                       }
                       {...field}
-                      className="min-h-[100px] max-h-[180px] text-[16px] max-w-[750px] font-medium p-3 w-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none resize-none !bg-[#2C2C2C]"
+                      className="whitespace-pre-wrap min-h-[100px] max-h-[180px] text-[16px] max-w-[750px] font-medium p-3 w-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none resize-none !bg-[#2C2C2C]"
                     />
                     <div className="flex items-center gap-2 p-2 border-[#D4D4D4] bg-[#2C2C2C]">
                       <Tabs
                         value={mode}
-                        onValueChange={(value) => setMode(value as 'ask' | 'research' | 'create')}
+                        onValueChange={(value) => {
+                          setMode(value as 'ask' | 'search' | 'scan')
+                          // Clear file when switching to search mode
+                          if (value === 'search' && selectedFile) {
+                            removeFile()
+                          }
+                        }}
                         className="flex-1"
                       >
                         <TabsList className="bg-[#F5F5F5] dark:bg-[#262626] rounded-[8px] p-0 py-5 px-2 h-8 justify-start gap-1">
@@ -176,21 +307,108 @@ const ChatInputForm = ({
                         </TabsList>
                       </Tabs>
                       <div className="flex items-center gap-2">
-                        <div>
-                          <div onClick={triggerFileInput}>
-                          <Image src="/assets/paper-clip.svg" alt="" width={30} height={30} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
+                        <div className="relative">
+                          <div 
+                            onClick={triggerFileInput}
+                            className={`p-1 rounded-md ${mode === 'scan' ? 'bg-[#FEF6E9]' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                            title={mode === 'scan' ? 'Take or upload food photo' : 'Attach file'}
+                          >
+                            {mode === 'scan' ? (
+                              <Camera className="h-5 w-5 text-[#FF3D00]" />
+                            ) : (
+                              <Image 
+                                src="/assets/paper-clip.svg" 
+                                alt="Attach file" 
+                                width={20} 
+                                height={20} 
+                                className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" 
+                              />
+                            )}
                           </div>
                           <input
                             type="file"
                             ref={fileInputRef}
                             onChange={handleFileChange}
-                            accept="image/*,.pdf"
+                            accept={mode === 'scan' ? 'image/*' : 'application/pdf'}
+                            capture={mode === 'scan' ? 'environment' : undefined}
                             className="hidden"
                           />
                         </div>
-                        <Image src="/assets/waveform.svg" alt="" width={30} height={30} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
+                        <button
+                          type="button"
+                          onClick={toggleListening}
+                          disabled={!isSpeechSupported}
+                          className={`relative p-1.5 rounded-full transition-all duration-200 ${
+                            isListening 
+                              ? 'bg-red-100 text-red-500 animate-pulse' 
+                              : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700'
+                          }`}
+                          title={isListening ? 'Stop listening' : 'Start voice input'}
+                        >
+                          {isListening ? (
+                            <div className="relative">
+                              <MicOff className="h-5 w-5" />
+                              <div 
+                                className="absolute -inset-1 rounded-full bg-red-100 opacity-75"
+                                style={{
+                                  transform: `scale(${1 + (volume / 200)})`,
+                                  transition: 'transform 0.1s ease-out'
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <Image width={20} height={20} alt="" src="/assets/waveform.svg" className="h-5 w-5" />
+                          )}
+                        </button>
 
-                        <Image src="/assets/@.svg" alt="" width={21} height={30} />
+                        <Image src="/assets/@.svg" alt="" width={21} height={30} className="ml-1" />
+                        
+                        {/* Voice input indicator */}
+                        {isListening && (
+                          <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-white dark:bg-[#2C2C2C] rounded-lg shadow-lg border border-gray-200 dark:border-gray-600">
+                            <div className="flex items-center gap-3">
+                              <div className="relative">
+                                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                  <Mic className="h-5 w-5 text-red-500" />
+                                </div>
+                                <div 
+                                  className="absolute inset-0 rounded-full bg-red-100 dark:bg-red-900/20 opacity-75 animate-ping"
+                                  style={{
+                                    transform: `scale(${1 + (volume / 50)})`,
+                                    transition: 'transform 0.1s ease-out'
+                                  }}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                                  {interimTranscript ? 'Listening...' : 'Speak now...'}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                                  {interimTranscript || 'Listening for speech...'}
+                                </div>
+                                <div className="flex items-center mt-2">
+                                  {[1, 2, 3, 4, 5].map((i) => (
+                                    <div 
+                                      key={i}
+                                      className="h-1 mx-0.5 bg-red-400 rounded-full transition-all duration-200"
+                                      style={{
+                                        width: '4px',
+                                        height: `${Math.max(4, Math.random() * 20 + 4)}px`,
+                                        opacity: 0.3 + (Math.random() * 0.7)
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              <button
+                                onClick={toggleListening}
+                                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              >
+                                <X className="h-5 w-5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         <Button
                           type="submit"
                           size="icon"

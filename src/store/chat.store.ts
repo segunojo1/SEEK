@@ -1,15 +1,18 @@
 import { create } from 'zustand'
 import { ChatMessage } from '@/lib/types'
+import { chatService } from '@/services/chat.service'
 
 interface ChatStore {
   messages: ChatMessage[]
   isLoading: boolean
   currentChatId: string | null
   addMessage: (message: ChatMessage) => void
+  setMessages: (messages: ChatMessage[]) => void
   clearMessages: () => void
   setIsLoading: (isLoading: boolean) => void
   setCurrentChatId: (chatId: string | null) => void
-  sendMessage: (message: string) => Promise<void>
+  sendMessage: (message: string, file?: File) => Promise<void>
+  fetchPreviousInteractions: () => Promise<ChatMessage[]>
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -35,10 +38,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ currentChatId: chatId })
   },
 
+  setMessages: (messages: ChatMessage[]) => {
+    set({ messages })
+  },
+
   sendMessage: async (message: string, file?: File) => {
     if (!message.trim() && !file) return
 
-    const { messages, currentChatId, addMessage, setIsLoading } = get()
+    const { addMessage, setIsLoading } = get()
 
     // Add user message with optional file attachment
     const userMessage: ChatMessage = {
@@ -51,26 +58,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     try {
       setIsLoading(true)
 
-      // Simulate API call with file upload if present
+      // Handle file upload if present
       if (file) {
+        // For now, we'll just show a message about the file
         // In a real implementation, you would upload the file here
-        // const formData = new FormData();
-        // formData.append('file', file);
-        // formData.append('message', message);
-        // await api.post('/chat/message', formData);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const fileMessage: ChatMessage = {
+          role: 'assistant',
+          content: `I've received your file: ${file.name}. Currently, file processing is not implemented.`
+        }
+        addMessage(fileMessage)
+        return
       }
 
-      // Add assistant message
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: file 
-          ? `I've received your file: ${file.name}. How can I help you with it?` 
-          : 'This is a simulated response. Please implement the API integration.'
-      }
-      addMessage(assistantMessage)
+      // Send text message to the API
+      const response = await chatService.sendMessage(message)
+      addMessage(response)
     } catch (error) {
       console.error('Error sending message:', error)
       // Add error message
@@ -81,6 +83,25 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       addMessage(errorMessage)
     } finally {
       setIsLoading(false)
+    }
+  },
+
+  fetchPreviousInteractions: async () => {
+    try {
+      const { setIsLoading } = get()
+      setIsLoading(true)
+      
+      const messages = await chatService.getPreviousInteractions()
+      if (messages.length > 0) {
+        // Only set messages if we got some back
+        return messages
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching previous interactions:', error)
+      return []
+    } finally {
+      get().setIsLoading(false)
     }
   }
 }))

@@ -29,7 +29,7 @@ export default function ClientLayout({
     return (
         <SidebarProvider>
             <AppSidebar />
-            <main className="w-full relative">
+            <main className="w-full relative bg-[#262626]">
                 <div className="flex items-center gap-3 absolute right-[20px] top-[20px]">
                     <PlusIcon width={20} height={20}/>
                     <File className="mr-[30px]" width={20} height={20} />
