@@ -42,7 +42,7 @@ export class ChatService {
   }
 
   private getProfileId(): string {
-    const profileId = Cookies.get('profileId');
+    const profileId = Cookies.get('profileID');
     if (!profileId) {
       throw new Error('Profile ID not found in cookies');
     }

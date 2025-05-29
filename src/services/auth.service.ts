@@ -306,6 +306,10 @@ class AuthService {
   public async createProfile(userId: string, profileData: ProfilePayload): Promise<Profile> {
     try {
       const response = await this.api.post<Profile>(`/api/Profile/create?userId=${userId}`, profileData);
+      // Store profile ID in cookies after successful profile creation
+      if (response.data?.id) {
+        Cookies.set('profileID', response.data.id, this.COOKIE_OPTIONS);
+      }
       return response.data;
     } catch (error: any) {
       console.error('Profile creation failed:', error);
@@ -313,17 +317,66 @@ class AuthService {
     }
   }
 
-  public async login(email: string, password: string): Promise<{ user: User; token: string}> {
+  public async getProfileByUserId(userId: string): Promise<{
+    $id: string;
+    message: string;
+    isSuccessful: boolean;
+    value: number;
+  }> {
     try {
-      const response = await this.api.post<{ user: User; token: string }>('/login', { email, password });
+      const response = await this.api.get(`/api/Profile/profileByIdUserId?userId=${userId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch profile:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch profile. Please try again.');
+    }
+  }
+
+  public async login(email: string, password: string): Promise<{ user: User; token: string; value: any }> {
+    try {
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('password', password);
+
+      const response = await this.api.post<{ 
+        $id: string;
+        token: string;
+        value: {
+          $id: string;
+          id: number;
+          fullName: string;
+          email: string;
+          roleId: number;
+          roleName: string;
+          isProfileExist: boolean;
+        };
+        message: string;
+      }>('/api/auth/login', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
 
       if (response.data.token) {
-        Cookies.set('token', response.data.token, this.COOKIE_OPTIONS);
-        Cookies.set('user', JSON.stringify(response.data.user), this.COOKIE_OPTIONS);
-        this.api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        const { token, value } = response.data;
+        const user = {
+          id: value.id.toString(),
+          email: value.email,
+          firstName: value.fullName.split(' ')[0],
+          lastName: value.fullName.split(' ').slice(1).join(' ') || '',
+          isEmailVerified: true,
+          dateCreated: new Date().toISOString(),
+          dateModified: null
+        };
+        
+        Cookies.set('token', token, this.COOKIE_OPTIONS);
+        Cookies.set('user', JSON.stringify(user), this.COOKIE_OPTIONS);
+        this.api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        return { user, token, value: response.data.value };
       }
       
-      return response.data;
+      throw new Error('No token received');
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Login failed';
       toast(errorMessage);

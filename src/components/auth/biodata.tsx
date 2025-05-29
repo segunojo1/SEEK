@@ -72,7 +72,7 @@ const Biodata = ({ form, onSubmit }: BiodataProps) => {
                     {['Male', 'Female', 'Other'].map((gender) => (
                       <FormItem
                         key={gender}
-                        className={`flex items-center justify-between border transition-all ${field.value === gender.toLowerCase()
+                        className={`flex items-center justify-between border transition-all ${field.value === gender
                             ? 'border-[#F9E8CD] text-[#F9E8CD]'
                             : 'border-[#D4D4D4]'
                           } py-3 px-4 rounded-[5px] space-y-0`}
@@ -82,7 +82,7 @@ const Biodata = ({ form, onSubmit }: BiodataProps) => {
                         </FormLabel>
                         <FormControl>
                           <RadioGroupItem
-                            value={gender.toLowerCase()}
+                            value={gender}
                             className="text-[#F9E8CD] data-[state=checked]:text-[#F9E8CD]"
                           />
                         </FormControl>
@@ -142,14 +142,14 @@ const Biodata = ({ form, onSubmit }: BiodataProps) => {
               <FormItem>
                 <FormLabel className="font-medium">Skin Type</FormLabel>
                 <FormControl>
-                  <Select {...field}>
+                  <Select {...field} onValueChange={field.onChange}
+                                        defaultValue={field.value}>
                     <SelectTrigger className="flex h-12 w-full rounded-[5px] border border-[#D4D4D4] bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                       <SelectValue placeholder="Select skin type" />
                     </SelectTrigger>
                     <SelectContent>
                       {['Type I', 'Type II', 'Type III', 'Type IV', 'Type V', 'Type VI'].map((type) => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-
+                        <SelectItem  key={type} value={type}>{type}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

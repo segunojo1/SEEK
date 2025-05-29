@@ -13,7 +13,7 @@ import Image from 'next/image';
 export interface AuthClientLayoutProps {
   children: React.ReactNode;
   showSidebar?: boolean;
-  currentStep?: 'signup' | 'verify-email' | 'verified' | 'about-you' | 'study-vibe' | 'add-profile';
+  currentStep?: 'signup' | 'verify-email' | 'verified' | 'about-you' | 'study-vibe' | 'diet-type' | 'user-goals' | 'allergies';
 }
 
 export default function AuthClientLayout({
@@ -69,8 +69,8 @@ export default function AuthClientLayout({
       <div className={`flex w-full min-h-screen p-10 px-32 pt-24 ${!showSidebar ? 'justify-center' : ''}`}>
         {showSidebar && (
           <aside className='fixed w-1/3 h-screen flex items-start'>
-            <h1 className='text-[85px] font-semibold max-w-[350px]'>
-              {currentStep === 'add-profile' ? (
+            <h1 className='text-[85px] font-semibold max-w-[390px]'>
+              {currentStep === 'user-goals' ? (
                 <>
                   <Image 
                     src={theme === 'dark' ? '/assets/add-your-look-dark.png' : '/assets/add-your-look.png'} 
@@ -83,9 +83,9 @@ export default function AuthClientLayout({
                 'Lets get started'
               ) : (
                 <>
-                  Think It.
+                  Search It.
                   <br />
-                  Learn It.
+                  Know It.
                 </>
               )}
             </h1>

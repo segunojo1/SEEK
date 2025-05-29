@@ -214,31 +214,66 @@ const ChatInputForm = ({
             <div className="relative w-full max-w-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2C2C2C] rounded-lg p-3">
               <div className="flex justify-between items-start gap-3">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="flex-shrink-0 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
-                    <FileText className="w-5 h-5 text-red-500" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {selectedFile?.name}
+                  {mode === 'scan' && previewUrl ? (
+                    <div className="flex-shrink-0 w-16 h-16 relative rounded-md overflow-hidden">
+                      <Image 
+                        src={previewUrl} 
+                        alt="Scanned food" 
+                        fill 
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex-shrink-0 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                      <FileText className="w-5 h-5 text-red-500" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {mode === 'scan' ? 'Scanned Food' : selectedFile?.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {selectedFile?.size ? `${(selectedFile.size / 1024).toFixed(1)} KB` : ''}
-                    </p>
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        className="text-xs text-blue-500 hover:underline flex items-center gap-1"
-                        onClick={() => {
-                          if (selectedFile) {
-                            window.open(previewUrl, '_blank')
-                          }
-                        }}
-                      >
-                        <span>Open in new tab</span>
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </button>
+                    {mode !== 'scan' && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {selectedFile?.size ? `${(selectedFile.size / 1024).toFixed(1)} KB` : ''}
+                      </p>
+                    )}
+                    <div className="mt-2 flex items-center gap-3">
+                      {mode === 'scan' && form.getValues('chat') && (
+                        <>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {form.getValues('chat')}
+                          </span>
+                          <a 
+                            href={`/meals/${encodeURIComponent(form.getValues('chat'))}`}
+                            className="text-xs text-blue-500 hover:underline flex items-center gap-1 whitespace-nowrap"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              router.push(`/meals/${encodeURIComponent(form.getValues('chat'))}`);
+                            }}
+                          >
+                            <span>Open in page</span>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </>
+                      )}
+                      {mode !== 'scan' && (
+                        <button
+                          type="button"
+                          className="text-xs text-blue-500 hover:underline flex items-center gap-1"
+                          onClick={() => {
+                            if (selectedFile) {
+                              window.open(previewUrl, '_blank')
+                            }
+                          }}
+                        >
+                          <span>Open in new tab</span>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -310,12 +345,10 @@ const ChatInputForm = ({
                         <div className="relative">
                           <div 
                             onClick={triggerFileInput}
-                            className={`p-1 rounded-md ${mode === 'scan' ? 'bg-[#FEF6E9]' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                            className={`rounded-md ${mode === 'scan' ? '' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                             title={mode === 'scan' ? 'Take or upload food photo' : 'Attach file'}
                           >
-                            {mode === 'scan' ? (
-                              <Camera className="h-5 w-5 text-[#FF3D00]" />
-                            ) : (
+                            
                               <Image 
                                 src="/assets/paper-clip.svg" 
                                 alt="Attach file" 
@@ -323,7 +356,6 @@ const ChatInputForm = ({
                                 height={20} 
                                 className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" 
                               />
-                            )}
                           </div>
                           <input
                             type="file"

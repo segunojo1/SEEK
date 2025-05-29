@@ -63,14 +63,14 @@ const RecommendedProducts = () => {
                   </div>
                 )}
               </div>
-              <CardContent className="p-2">
+              <CardContent className="p-2 !gap-1">
                 <h4 className="text-sm font-medium line-clamp-2">{meal.name}</h4>
                 <p className="text-xs text-gray-500 mt-1 line-clamp-2">{meal.description}</p>
-                {meal.course && (
+                {/* {meal.course && (
                   <span className="text-xs bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-0.5 mt-1 inline-block">
                     {meal.course}
                   </span>
-                )}
+                )} */}
               </CardContent>
             </Card>
           ))

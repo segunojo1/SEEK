@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, UseFormReturn } from 'react-hook-form';
-import { z } from 'zod';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import authService from '@/services/auth.service';
@@ -62,29 +61,16 @@ const variants = {
   })
 };
 
-// Define the steps in the signup process
-export const SIGNUP_STEPS = {
-  SIGNUP: 'signup',
-  VERIFY_EMAIL: 'verify-email',
-  BIODATA: 'about-you',
-  DIET_TYPE: 'diet-type',
-  ALLERGIES: 'allergies',
-  USER_GOALS: 'study-vibe'
-} as const;
+import { 
+  SIGNUP_STEPS, 
+  SignupStep, 
+  SIGNUP_FLOW_STEPS, 
+  SignupFlowStep 
+} from '../../../_constants/signup-steps';
 
-type SignupStep = typeof SIGNUP_STEPS[keyof typeof SIGNUP_STEPS];
-
-// Define the steps in the correct order
-const STEPS = [
-  SIGNUP_STEPS.SIGNUP,
-  SIGNUP_STEPS.VERIFY_EMAIL,
-  SIGNUP_STEPS.BIODATA,
-  SIGNUP_STEPS.DIET_TYPE,
-  SIGNUP_STEPS.ALLERGIES,
-  SIGNUP_STEPS.USER_GOALS
-] as const;
-
-type StepType = typeof STEPS[number];
+// Alias for backward compatibility
+const STEPS = SIGNUP_FLOW_STEPS;
+type StepType = SignupFlowStep;
 
 const SignUpPage = () => {
   const router = useRouter();
@@ -235,7 +221,7 @@ const SignUpPage = () => {
       });
       
       // Move to the next step
-      handleNextStep();
+      router.push('/auth/login');
       
       return Promise.resolve();
     } catch (error: any) {
@@ -287,7 +273,10 @@ const SignUpPage = () => {
       
       // Reset the signup flow and redirect to dashboard
       resetSignup();
+      console.log('before route');
       router.push('/home');
+      console.log('after route');
+      
     } catch (error) {
       console.error('Profile creation error:', error);
       throw error; // Re-throw to show error in the form

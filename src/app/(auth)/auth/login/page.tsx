@@ -10,20 +10,20 @@ import { z } from "zod"
 import { toast } from "sonner"
 import authService from "@/services/auth.service"
 import { useState } from "react"
-import useAuthStore from "@/store/auth.store"
+import Cookies from "js-cookie"
 import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
 import AuthClientLayout from "@/components/layout/auth-layout"
 import { useUserStore } from "@/store/user.store"
 import { useRouter } from "next/navigation"
 
-interface LoginFormProps {
-  form: UseFormReturn<z.infer<typeof loginSchema>>
-  onSubmit: (values: z.infer<typeof loginSchema>) => void
-  onSuccess?: (email: string) => void
-}
+// interface LoginFormProps {
+//   form: UseFormReturn<z.infer<typeof loginSchema>>
+//   onSubmit: (values: z.infer<typeof loginSchema>) => void
+//   onSuccess?: (email: string) => void
+// }
 
-const LoginForm = ({ onSubmit }: LoginFormProps) => {
+const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false)
   const route = useRouter();
   //   const updateSignupData = useAuthStore((state: any) => state.updateSignupData)
@@ -37,15 +37,47 @@ const LoginForm = ({ onSubmit }: LoginFormProps) => {
   });
   const handleSubmit = async (values: z.infer<typeof loginSchema>) => {
     try {
-      setIsLoading(true)
+      setIsLoading(true);
       
-      const { user } = await authService.login(values.email, values.password)
-      console.log(user);
+      const response = await authService.login(values.email, values.password) as {
+        user: any;
+        token: string;
+        value: {
+          isProfileExist: boolean;
+          [key: string]: any;
+        };
+      };
+      
+      const { user, value } = response;
       
       // Update user in the store
-      const userStore = useUserStore.getState()
-      userStore.setUser(user)
-      route.push('/home')
+      const userStore = useUserStore.getState();
+      userStore.setUser(user);
+      
+      // Redirect based on profile status
+      if (value?.isProfileExist) {
+        try {
+          // Fetch profile ID for the user
+          const profileResponse = await authService.getProfileByUserId(user.id);
+          if (profileResponse?.value) {
+            // Store profile ID in cookies
+            Cookies.set('profileID', profileResponse.value.toString(), {
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              path: '/',
+              expires: 7 // 7 days
+            });
+          }
+          route.push('/home');
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+          // Still redirect to home even if profile fetch fails
+          route.push('/home');
+        }
+      } else {
+        // Redirect to signup page with step=3 (BIODATA)
+        route.push('/auth/signup?step=3');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to login')
     } finally {
@@ -56,7 +88,7 @@ const LoginForm = ({ onSubmit }: LoginFormProps) => {
   return (
     <AuthClientLayout>
       <div>
-        <h2 className="text-[29px]/[auto] text-[#737373] font-semibold mb-[22px]">Welcome Back to Clark!</h2>
+        <h2 className="text-[29px]/[auto] text-[#737373] font-semibold mb-[22px]">Welcome Back to Seek!</h2>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8 satoshi flex flex-col">
             <FormField
@@ -102,12 +134,12 @@ const LoginForm = ({ onSubmit }: LoginFormProps) => {
               Continue with Google
             </Button>
 
-            <Link href="/auth/signup" className="text-[#FF3D00] text-base justify-self-end self-end mb-4">
+            <Link href="/auth/signup" className="text-[#F9E8CD] text-base justify-self-end self-end mb-4">
               Dont have an account? Sign up
             </Link>
             <Button
               type="submit"
-              className="bg-[#FF3D00] w-full py-[13px] h-full"
+              className="bg-[#F9E8CD] w-full py-[13px] h-full"
               disabled={isLoading}
             >
               {isLoading ? 'Logging in...' : 'Login'}

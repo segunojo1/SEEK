@@ -14,6 +14,19 @@ export interface MealRecommendationsResponse {
   $values: MealRecommendation[];
 }
 
+export interface BlogPost {
+  $id: string;
+  id: string;
+  title: string;
+  category: string;
+  text: string;
+}
+
+export interface BlogResponse {
+  $id: string;
+  content: BlogPost[];
+}
+
 export interface MealPlan {
   id: string;
   name: string;
@@ -28,6 +41,26 @@ export interface MealPlan {
       amount: string;
     }>;
   }>;
+}
+
+export interface NutritionInfo {
+  calories: string;
+  carbs: string;
+  protein: string;
+  fat: string;
+  fiber: string;
+  sodium: string;
+}
+
+export interface MealDetails {
+  mealName: string;
+  generalHealthScore: number;
+  personalizedHealthScore: number;
+  description: string;
+  tags: string[];
+  nutrition: NutritionInfo;
+  recipeSteps: string[];
+  usage: string;
 }
 
 export class ProductService {
@@ -70,7 +103,7 @@ export class ProductService {
   }
 
   private getProfileId(): string {
-    const profileId = Cookies.get('profileId');
+    const profileId = Cookies.get('profileID');
     if (!profileId) {
       throw new Error('Profile ID not found in cookies');
     }
@@ -100,6 +133,47 @@ export class ProductService {
     } catch (error) {
       console.error('Error generating meal plan:', error);
       return null;
+    }
+  }
+
+  public async getAllBlogs(): Promise<BlogPost[]> {
+    try {
+      const response = await this.api.get<BlogResponse>('/api/Blog/GenerateAllBlogs');
+      return response.data?.content || [];
+    } catch (error) {
+      console.error('Error fetching blogs:', error);
+      return [];
+    }
+  }
+
+  public async getBlogById(id: string): Promise<BlogPost | null> {
+    try {
+      const response = await this.api.get<BlogPost>(`/api/Blog/${id}`);
+      return response.data || null;
+    } catch (error) {
+      console.error('Error fetching blog post:', error);
+      return null;
+    }
+  }
+
+  public async getMealDetails(mealName: string, profileId: string): Promise<{ data: MealDetails | null; error: string | null }> {
+    try {
+      const response = await this.api.get<MealDetails>('/api/MealRecommendation/generate', {
+        params: { mealName, profileId }
+      });
+
+      // If we have data, return it regardless of isSuccessful flag
+      if (response.data) {
+        return { data: response.data, error: null };
+      }
+      
+      return { data: null, error: 'No meal data received' };
+    } catch (error: any) {
+      console.error('Error fetching meal details:', error);
+      return { 
+        data: null, 
+        error: error.response?.data?.message || 'Failed to fetch meal details' 
+      };
     }
   }
 }

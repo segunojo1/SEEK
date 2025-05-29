@@ -49,7 +49,13 @@ export const LatestWorkspace = () => {
     )
 }
 
-const SidebarGroupCustom = ({ items, label }: any) => {
+interface SidebarItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const SidebarGroupCustom = ({ items, label }: { items: SidebarItem[]; label: string }) => {
     const pathname = usePathname()
 
     return (
@@ -93,6 +99,7 @@ const SidebarGroupCustom = ({ items, label }: any) => {
 export function AppSidebar() {
     const items = [
         { title: "Search", url: "/search", icon: Search },
+        { title: "Explore", url: "/explore", icon: Search },
         { title: "Home", url: "/home", icon: Home },
         { title: "Chat", url: "/chat", icon: Inbox },
         { title: "Scan", url: "/home", icon: Inbox },
@@ -125,7 +132,7 @@ export function AppSidebar() {
                 </SidebarGroup>
             </SidebarHeader>
             <SidebarContent>
-                <SidebarGroupCustom items={items} />
+                <SidebarGroupCustom label="" items={items} />
 
                 {/* <SidebarGroup className="mx-auto">
                     <LatestChat />
@@ -133,7 +140,7 @@ export function AppSidebar() {
                 <SidebarGroup className="mx-auto">
                     <LatestWorkspace />
                 </SidebarGroup> */}
-                <SidebarGroupCustom items={workspaceItems} label="Workspace Hub" />
+                {/* <SidebarGroupCustom items={workspaceItems} label="Workspace Hub" /> */}
 
             </SidebarContent>
 

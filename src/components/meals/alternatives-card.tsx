@@ -16,8 +16,8 @@ const AlternativesCard = () => {
             </div>
 
             <Card className='bg-[#2C2C2C] relative  h-[318px] border-[0.5px] border-[#404040] rounded-[20px]'>
-            <Image src='/assets/meall.png' alt='' width={36} height={36} className='mb-[45px]' />
-            <CardContent>
+                <Image src='/assets/meall.png' alt='' width={36} height={36} className='mb-[45px]' />
+                <CardContent>
                     <ul className='text-[#D4D4D4] text-[14px] font-medium'>
                         <li>Soak and peel the beans.</li>
                         <li>Blend with peppers, onions, and a little water until smooth.</li>

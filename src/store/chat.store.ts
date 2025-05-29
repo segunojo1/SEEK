@@ -44,6 +44,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   sendMessage: async (message: string, file?: File) => {
     if (!message.trim() && !file) return
+console.log('send message');
 
     const { addMessage, setIsLoading } = get()
 
@@ -59,16 +60,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       setIsLoading(true)
 
       // Handle file upload if present
-      if (file) {
-        // For now, we'll just show a message about the file
-        // In a real implementation, you would upload the file here
-        const fileMessage: ChatMessage = {
-          role: 'assistant',
-          content: `I've received your file: ${file.name}. Currently, file processing is not implemented.`
-        }
-        addMessage(fileMessage)
-        return
-      }
+      // if (file) {
+      //   // For now, we'll just show a message about the file
+      //   // In a real implementation, you would upload the file here
+      //   const fileMessage: ChatMessage = {
+      //     role: 'assistant',
+      //     content: `I've received your file: ${file.name}. Currently, file processing is not implemented.`
+      //   }
+      //   addMessage(fileMessage)
+      //   return
+      // }
 
       // Send text message to the API
       const response = await chatService.sendMessage(message)
