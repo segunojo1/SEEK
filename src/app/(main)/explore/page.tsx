@@ -70,6 +70,21 @@ const Explore = () => {
             type="text"
             placeholder='Try searching for Jollof Rice'
             className="pl-10 pr-4 py-2 w-full"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const searchTerm = e.currentTarget.value.trim();
+                if (searchTerm) {
+                  // Find a matching meal
+                  // const matchingMeal = recommendedMeals.find(meal => 
+                  //   meal.mealName?.toLowerCase().includes(searchTerm.toLowerCase())
+                  // );
+                  
+                  router.push(`/meals/${encodeURIComponent(searchTerm.toLowerCase())}`);
+                  // if (matchingMeal) {
+                  // }
+                }
+              }
+            }}
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -88,7 +103,7 @@ const Explore = () => {
                 meals={recommendedMeals}
               />
             ) : (
-              <Skeleton className="w-[716px] h-[300px] rounded-[20px]" />
+              <Skeleton className="w-[716px] h-[300px] rounded-[20px] bg-white" />
             )}
             <TopInsight blogs={blogs} />
           </div>
@@ -101,7 +116,7 @@ const Explore = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {isLoading ? (
                 Array(3).fill(0).map((_, i) => (
-                  <Skeleton key={i} className="w-full h-[300px] rounded-[20px]" />
+                  <Skeleton key={i} className="w-full h-[300px] rounded-[20px] bg-white" />
                 ))
               ) : recommendedMeals.length > 0 ? (
                 recommendedMeals.slice(0, 6).map((meal) => (

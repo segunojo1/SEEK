@@ -58,8 +58,8 @@ export const useProductsStore = create<ProductsStore>((set, get) => ({
       }
       
       if (data) {
-        set({ currentMeal: data });
-        return data;
+        set({ currentMeal: data?.value });
+        return data?.value;
       }
       
       // If we get here, there was no data and no error was thrown

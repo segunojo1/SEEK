@@ -57,10 +57,20 @@ export interface MealDetails {
   generalHealthScore: number;
   personalizedHealthScore: number;
   description: string;
-  tags: string[];
+  tags: {
+    $id?: string;
+    $values: string[];
+  };
   nutrition: NutritionInfo;
-  recipeSteps: string[];
+  recipeSteps: {
+    $id?: string;
+    $values: string[];
+  };
   usage: string;
+  alternatives: {
+    $id?: string;
+    $values: string[];
+  };
 }
 
 export class ProductService {
@@ -176,6 +186,8 @@ export class ProductService {
       };
     }
   }
+
+    
 }
 
 export const productService = ProductService.getInstance();
